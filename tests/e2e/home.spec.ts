@@ -16,6 +16,13 @@ test("creates and structures a scenario", async ({ page }) => {
   await expect(page.getByText("2 lines")).toBeVisible();
   const firstLine = page.getByRole("textbox", { name: /1번 ScriptLine/ });
   await firstLine.fill("수정된 첫 줄");
+  await page
+    .getByRole("combobox", { name: "1번 ScriptLine 태그" })
+    .selectOption("dialogue");
+  await page.getByRole("button", { name: "태그 색상 설정" }).click();
+  const tagColorDialog = page.getByRole("dialog", { name: "태그 색상 설정" });
+  await tagColorDialog.getByLabel("대사 태그 색상").fill("#e04f8a");
+  await tagColorDialog.getByRole("button", { name: "완료" }).click();
   await firstLine.press("End");
   await firstLine.press("Enter");
 
@@ -52,4 +59,13 @@ test("creates and structures a scenario", async ({ page }) => {
       .getByRole("list", { name: "구조화된 ScriptLine 목록" })
       .getByRole("textbox", { name: /3번 ScriptLine/ }),
   ).toHaveValue("중간에 추가한 줄");
+  await expect(
+    page.getByRole("combobox", { name: "1번 ScriptLine 태그" }),
+  ).toHaveValue("dialogue");
+  await page.getByRole("button", { name: "태그 색상 설정" }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "태그 색상 설정" })
+      .getByLabel("대사 태그 색상"),
+  ).toHaveValue("#e04f8a");
 });

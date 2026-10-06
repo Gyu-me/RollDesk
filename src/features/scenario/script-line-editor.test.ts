@@ -6,6 +6,7 @@ import {
   insertScriptLineAfter,
   removeScriptLine,
   splitScriptLine,
+  updateScriptLineTag,
   updateScriptLineText,
 } from "./script-line-editor";
 
@@ -30,6 +31,12 @@ describe("ScriptLine editing", () => {
   it("updates a line without changing its identity", () => {
     const result = updateScriptLineText(lines, "line_1", "수정된 줄");
     expect(result[0]).toMatchObject({ id: "line_1", text: "수정된 줄" });
+  });
+
+  it("assigns a domain tag to a line", () => {
+    const result = updateScriptLineTag(lines, "line_1", "dialogue");
+    expect(result[0]).toMatchObject({ id: "line_1", tag: "dialogue" });
+    expect(result[1]).toMatchObject({ id: "line_2", tag: "unassigned" });
   });
 
   it("splits a line at the requested cursor offset", () => {

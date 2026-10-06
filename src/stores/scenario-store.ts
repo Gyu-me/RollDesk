@@ -5,6 +5,7 @@ import {
   insertScriptLineAfter,
   removeScriptLine,
   splitScriptLine,
+  updateScriptLineTag,
   updateScriptLineText,
 } from "@/features/scenario/script-line-editor";
 import { parseScenarioText } from "@/lib/parsing/parse-scenario-text";
@@ -13,7 +14,11 @@ import {
   listScenarios,
   saveScenario,
 } from "@/lib/storage/scenario-repository";
-import type { Scenario, ScenarioSummary } from "@/types/scenario";
+import type {
+  Scenario,
+  ScenarioSummary,
+  ScriptLineTag,
+} from "@/types/scenario";
 
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
@@ -29,6 +34,7 @@ interface ScenarioStore {
   updateSourceText: (sourceText: string) => void;
   structureSource: () => void;
   updateScriptLine: (id: string, text: string) => void;
+  updateScriptLineTag: (id: string, tag: ScriptLineTag) => void;
   splitScriptLine: (id: string, offset: number) => string | null;
   insertScriptLineAfter: (id: string) => string | null;
   deleteScriptLine: (id: string) => void;
@@ -137,6 +143,17 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     set({
       activeScenario: touchScenario(scenario, {
         scriptLines: updateScriptLineText(scenario.scriptLines, id, text),
+      }),
+      saveStatus: "dirty",
+    });
+  },
+
+  updateScriptLineTag: (id, tag) => {
+    const scenario = get().activeScenario;
+    if (!scenario) return;
+    set({
+      activeScenario: touchScenario(scenario, {
+        scriptLines: updateScriptLineTag(scenario.scriptLines, id, tag),
       }),
       saveStatus: "dirty",
     });

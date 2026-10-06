@@ -1,4 +1,5 @@
-export type ScriptLineTag = "unassigned";
+export type ScriptLineTag =
+  "unassigned" | "narration" | "dialogue" | "investigation" | "check";
 
 export interface ScriptLine {
   id: string;

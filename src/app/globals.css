@@ -125,6 +125,30 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@layer components {
+  .script-line-card {
+    border-left-color: var(--script-line-tag-color);
+    background-color: color-mix(
+      in oklch,
+      var(--script-line-tag-color) 9%,
+      var(--background)
+    );
+  }
+
+  .script-line-tag-select {
+    border-color: color-mix(
+      in oklch,
+      var(--script-line-tag-color) 45%,
+      var(--border)
+    );
+    background-color: color-mix(
+      in oklch,
+      var(--script-line-tag-color) 12%,
+      var(--surface-muted)
+    );
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

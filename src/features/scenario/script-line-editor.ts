@@ -1,5 +1,5 @@
 import { createId } from "@/lib/utils/create-id";
-import type { ScriptLine } from "@/types/scenario";
+import type { ScriptLine, ScriptLineTag } from "@/types/scenario";
 
 function reindexScriptLines(lines: ScriptLine[]) {
   return lines.map((line, order) => ({ ...line, order }));
@@ -11,6 +11,14 @@ export function updateScriptLineText(
   text: string,
 ) {
   return lines.map((line) => (line.id === id ? { ...line, text } : line));
+}
+
+export function updateScriptLineTag(
+  lines: ScriptLine[],
+  id: string,
+  tag: ScriptLineTag,
+) {
+  return lines.map((line) => (line.id === id ? { ...line, tag } : line));
 }
 
 export function splitScriptLine(

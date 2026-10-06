@@ -4,17 +4,31 @@ import {
   FilePlus2,
   FileText,
   LoaderCircle,
+  Palette,
   PanelLeft,
   Plus,
+  RotateCcw,
   Save,
   Sparkles,
+  Tags,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
+import {
+  getScriptLineTagDefinition,
+  scriptLineTags,
+} from "@/features/scenario/script-line-tags";
 import { useScenarioStore } from "@/stores/scenario-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import type { ScriptLineTag } from "@/types/scenario";
 
 const saveStatusText = {
   idle: "준비 중",
@@ -25,11 +39,14 @@ const saveStatusText = {
 } as const;
 
 export function ScenarioWorkspace() {
+  const [isTagColorDialogOpen, setIsTagColorDialogOpen] = useState(false);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<{
     id: string;
     order: number;
     text: string;
   } | null>(null);
+  const { tagColors, hydrateSettings, setTagColor, resetTagColors } =
+    useSettingsStore();
   const {
     scenarios,
     activeScenario,
@@ -42,6 +59,7 @@ export function ScenarioWorkspace() {
     updateSourceText,
     structureSource,
     updateScriptLine,
+    updateScriptLineTag,
     splitScriptLine,
     insertScriptLineAfter,
     deleteScriptLine,
@@ -85,7 +103,8 @@ export function ScenarioWorkspace() {
 
   useEffect(() => {
     void initialize();
-  }, [initialize]);
+    hydrateSettings();
+  }, [hydrateSettings, initialize]);
 
   useEffect(() => {
     if (saveStatus !== "dirty") return;
@@ -254,9 +273,20 @@ export function ScenarioWorkspace() {
                   직접 수정하거나 Enter로 줄을 나눌 수 있습니다.
                 </p>
               </div>
-              <span className="text-muted-foreground text-xs">
-                {activeScenario?.scriptLines.length ?? 0} lines
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">
+                  {activeScenario?.scriptLines.length ?? 0} lines
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setIsTagColorDialogOpen(true)}
+                  aria-label="태그 색상 설정"
+                >
+                  <Palette aria-hidden="true" />
+                </Button>
+              </div>
             </div>
 
             {activeScenario?.scriptLines.length ? (
@@ -266,17 +296,58 @@ export function ScenarioWorkspace() {
               >
                 {activeScenario.scriptLines.map((line) => (
                   <li key={line.id}>
-                    <div className="border-border bg-background group grid grid-cols-[2rem_minmax(0,1fr)_2rem] gap-3 rounded-xl border p-3">
+                    <div
+                      className="script-line-card border-border group grid grid-cols-[2rem_minmax(0,1fr)_2rem] gap-3 rounded-xl border border-l-4 p-3"
+                      style={
+                        {
+                          "--script-line-tag-color": tagColors[line.tag],
+                        } as CSSProperties
+                      }
+                    >
                       <span className="bg-surface-muted text-muted-foreground flex size-8 items-center justify-center rounded-lg font-mono text-xs">
                         {line.order + 1}
                       </span>
                       <div className="min-w-0">
-                        <label
-                          htmlFor={`script-line-${line.id}`}
-                          className="text-muted-foreground text-[0.65rem] font-medium tracking-wider uppercase"
-                        >
-                          {line.order + 1}번 ScriptLine · {line.tag}
-                        </label>
+                        <div className="flex items-center justify-between gap-2">
+                          <label
+                            htmlFor={`script-line-${line.id}`}
+                            className="text-muted-foreground text-[0.65rem] font-medium tracking-wider uppercase"
+                          >
+                            {line.order + 1}번 ScriptLine
+                          </label>
+                          <div className="relative flex items-center">
+                            <Tags
+                              aria-hidden="true"
+                              className="text-muted-foreground pointer-events-none absolute left-2 size-3"
+                            />
+                            <label
+                              className="sr-only"
+                              htmlFor={`script-line-tag-${line.id}`}
+                            >
+                              {line.order + 1}번 ScriptLine 태그
+                            </label>
+                            <select
+                              id={`script-line-tag-${line.id}`}
+                              value={line.tag}
+                              onChange={(event) =>
+                                updateScriptLineTag(
+                                  line.id,
+                                  event.target.value as ScriptLineTag,
+                                )
+                              }
+                              title={
+                                getScriptLineTagDefinition(line.tag).description
+                              }
+                              className="script-line-tag-select focus-visible:border-ring focus-visible:ring-ring/30 h-7 rounded-lg border py-1 pr-7 pl-7 text-xs font-medium outline-none focus-visible:ring-2"
+                            >
+                              {scriptLineTags.map((tag) => (
+                                <option key={tag.value} value={tag.value}>
+                                  {tag.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                         <textarea
                           id={`script-line-${line.id}`}
                           value={line.text}
@@ -388,6 +459,96 @@ export function ScenarioWorkspace() {
                 onClick={confirmDeleteLine}
               >
                 삭제
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isTagColorDialogOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsTagColorDialogOpen(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tag-color-dialog-title"
+            aria-describedby="tag-color-dialog-description"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setIsTagColorDialogOpen(false);
+            }}
+            className="border-border bg-surface w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
+          >
+            <div className="flex items-start gap-4">
+              <span className="bg-accent text-accent-foreground flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <Palette aria-hidden="true" className="size-5" />
+              </span>
+              <div>
+                <h2
+                  id="tag-color-dialog-title"
+                  className="text-lg font-semibold"
+                >
+                  태그 색상 설정
+                </h2>
+                <p
+                  id="tag-color-dialog-description"
+                  className="text-muted-foreground mt-1 text-sm leading-6"
+                >
+                  색상은 이 브라우저에 저장되며 모든 시나리오에 적용됩니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              {scriptLineTags.map((tag) => (
+                <label
+                  key={tag.value}
+                  className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="size-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: tagColors[tag.value] }}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">
+                        {tag.label}
+                      </span>
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {tag.description}
+                      </span>
+                    </span>
+                  </span>
+                  <input
+                    type="color"
+                    value={tagColors[tag.value]}
+                    onChange={(event) =>
+                      setTagColor(tag.value, event.target.value)
+                    }
+                    aria-label={`${tag.label} 태그 색상`}
+                    className="border-border bg-surface-muted h-9 w-12 cursor-pointer rounded-lg border p-1"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <Button type="button" variant="ghost" onClick={resetTagColors}>
+                <RotateCcw aria-hidden="true" data-icon="inline-start" />
+                기본값 복원
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setIsTagColorDialogOpen(false)}
+                autoFocus
+              >
+                완료
               </Button>
             </div>
           </section>
