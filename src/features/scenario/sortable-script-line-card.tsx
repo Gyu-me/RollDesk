@@ -15,7 +15,6 @@ import {
   getScriptLineTagDefinition,
   scriptLineTags,
 } from "@/features/scenario/script-line-tags";
-import { resolveScriptLineStyle } from "@/features/scenario/script-line-style";
 import type { ScriptLine, ScriptLineTag } from "@/types/scenario";
 
 interface SortableScriptLineCardProps {
@@ -40,7 +39,6 @@ export function SortableScriptLineCard({
   onRequestDelete,
 }: SortableScriptLineCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const lineStyle = resolveScriptLineStyle(line.style);
   const {
     attributes,
     listeners,
@@ -127,11 +125,6 @@ export function SortableScriptLineCard({
           rows={1}
           onChange={(event) => onUpdateText(line.id, event.target.value)}
           onKeyDown={handleKeyDown}
-          style={{
-            fontWeight: lineStyle.bold ? 700 : 400,
-            fontStyle: lineStyle.italic ? "italic" : "normal",
-            textAlign: lineStyle.textAlign,
-          }}
           className="placeholder:text-muted-foreground focus-visible:ring-ring min-h-8 w-full resize-none overflow-hidden rounded-md bg-transparent px-2 py-1.5 text-sm leading-5 outline-none focus-visible:ring-2"
           placeholder="ScriptLine 내용을 입력하세요"
         />

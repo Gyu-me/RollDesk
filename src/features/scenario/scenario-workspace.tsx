@@ -15,13 +15,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
+  BookOpen,
   FilePlus2,
   FileText,
-  Italic,
   LoaderCircle,
   Palette,
   PanelLeft,
@@ -35,12 +31,11 @@ import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { resolveScriptLineStyle } from "@/features/scenario/script-line-style";
+import { MacroLibraryDialog } from "@/features/macro/macro-library-dialog";
 import { scriptLineTags } from "@/features/scenario/script-line-tags";
 import { SortableScriptLineCard } from "@/features/scenario/sortable-script-line-card";
 import { useScenarioStore } from "@/stores/scenario-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import type { ScriptLineStyle } from "@/types/scenario";
 
 const saveStatusText = {
   idle: "준비 중",
@@ -52,6 +47,7 @@ const saveStatusText = {
 
 export function ScenarioWorkspace() {
   const [isTagColorDialogOpen, setIsTagColorDialogOpen] = useState(false);
+  const [isMacroLibraryOpen, setIsMacroLibraryOpen] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<{
     id: string;
@@ -73,7 +69,6 @@ export function ScenarioWorkspace() {
     structureSource,
     updateScriptLine,
     updateScriptLineTag,
-    updateScriptLineStyle,
     splitScriptLine,
     insertScriptLineAfter,
     deleteScriptLine,
@@ -83,7 +78,6 @@ export function ScenarioWorkspace() {
   const selectedScriptLine = activeScenario?.scriptLines.find(
     (line) => line.id === selectedLineId,
   );
-  const selectedLineStyle = resolveScriptLineStyle(selectedScriptLine?.style);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -121,10 +115,6 @@ export function ScenarioWorkspace() {
 
   const handleDeleteLine = (id: string, order: number, text: string) => {
     setPendingDeleteLine({ id, order, text });
-  };
-
-  const handleStyleChange = (changes: Partial<ScriptLineStyle>) => {
-    if (selectedLineId) updateScriptLineStyle(selectedLineId, changes);
   };
 
   const confirmDeleteLine = () => {
@@ -329,6 +319,15 @@ export function ScenarioWorkspace() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
+                  onClick={() => setIsMacroLibraryOpen(true)}
+                >
+                  <BookOpen aria-hidden="true" data-icon="inline-start" />
+                  템플릿
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   size="icon-sm"
                   onClick={() => setIsTagColorDialogOpen(true)}
                   aria-label="태그 색상 설정"
@@ -337,76 +336,6 @@ export function ScenarioWorkspace() {
                 </Button>
               </div>
             </div>
-
-            {activeScenario?.scriptLines.length ? (
-              <div className="border-border bg-background mb-3 flex min-h-8 items-center justify-between gap-3 rounded-lg border px-2 py-1">
-                <span className="text-muted-foreground min-w-0 truncate text-xs">
-                  {selectedScriptLine
-                    ? `${selectedScriptLine.order + 1}번 줄 꾸미기`
-                    : "꾸밀 ScriptLine을 선택하세요"}
-                </span>
-                <div
-                  className="flex shrink-0 items-center gap-0.5"
-                  role="toolbar"
-                  aria-label="선택한 ScriptLine 꾸미기"
-                >
-                  <Button
-                    type="button"
-                    variant={selectedLineStyle.bold ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    disabled={!selectedScriptLine}
-                    aria-label="굵게"
-                    aria-pressed={selectedLineStyle.bold}
-                    onClick={() =>
-                      handleStyleChange({ bold: !selectedLineStyle.bold })
-                    }
-                  >
-                    <Bold aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={selectedLineStyle.italic ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    disabled={!selectedScriptLine}
-                    aria-label="기울임"
-                    aria-pressed={selectedLineStyle.italic}
-                    onClick={() =>
-                      handleStyleChange({ italic: !selectedLineStyle.italic })
-                    }
-                  >
-                    <Italic aria-hidden="true" />
-                  </Button>
-                  <span
-                    aria-hidden="true"
-                    className="bg-border mx-1 h-4 w-px"
-                  />
-                  {(
-                    [
-                      ["left", "왼쪽 정렬", AlignLeft],
-                      ["center", "가운데 정렬", AlignCenter],
-                      ["right", "오른쪽 정렬", AlignRight],
-                    ] as const
-                  ).map(([textAlign, label, Icon]) => (
-                    <Button
-                      key={textAlign}
-                      type="button"
-                      variant={
-                        selectedLineStyle.textAlign === textAlign
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      size="icon-xs"
-                      disabled={!selectedScriptLine}
-                      aria-label={label}
-                      aria-pressed={selectedLineStyle.textAlign === textAlign}
-                      onClick={() => handleStyleChange({ textAlign })}
-                    >
-                      <Icon aria-hidden="true" />
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {activeScenario?.scriptLines.length ? (
               <DndContext
@@ -603,6 +532,13 @@ export function ScenarioWorkspace() {
             </div>
           </section>
         </div>
+      ) : null}
+
+      {isMacroLibraryOpen ? (
+        <MacroLibraryDialog
+          initialContent={selectedScriptLine?.text ?? ""}
+          onClose={() => setIsMacroLibraryOpen(false)}
+        />
       ) : null}
     </main>
   );

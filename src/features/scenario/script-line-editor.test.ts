@@ -8,7 +8,6 @@ import {
   reorderScriptLines,
   splitScriptLine,
   updateScriptLineTag,
-  updateScriptLineStyle,
   updateScriptLineText,
 } from "./script-line-editor";
 
@@ -39,20 +38,6 @@ describe("ScriptLine editing", () => {
     const result = updateScriptLineTag(lines, "line_1", "dialogue");
     expect(result[0]).toMatchObject({ id: "line_1", tag: "dialogue" });
     expect(result[1]).toMatchObject({ id: "line_2", tag: "unassigned" });
-  });
-
-  it("updates line-level style while filling legacy defaults", () => {
-    const result = updateScriptLineStyle(lines, "line_1", {
-      bold: true,
-      textAlign: "center",
-    });
-
-    expect(result[0]?.style).toEqual({
-      bold: true,
-      italic: false,
-      textAlign: "center",
-    });
-    expect(result[1]?.style).toBeUndefined();
   });
 
   it("splits a line at the requested cursor offset", () => {

@@ -16,10 +16,38 @@ test("creates and structures a scenario", async ({ page }) => {
   await expect(page.getByText("2 lines")).toBeVisible();
   const firstLine = page.getByRole("textbox", { name: /1번 ScriptLine/ });
   await firstLine.fill("수정된 첫 줄");
-  await page.getByRole("button", { name: "굵게" }).click();
-  await page.getByRole("button", { name: "가운데 정렬" }).click();
-  await expect(firstLine).toHaveCSS("font-weight", "700");
-  await expect(firstLine).toHaveCSS("text-align", "center");
+
+  await page.getByRole("button", { name: "템플릿" }).click();
+  const macroDialog = page.getByRole("dialog", {
+    name: "매크로 템플릿 보관함",
+  });
+  await expect(macroDialog.getByLabel("ScriptLine 내용")).toHaveValue(
+    "수정된 첫 줄",
+  );
+  await expect(macroDialog.getByLabel("생성된 코드")).toHaveValue(
+    /수정된 첫 줄/,
+  );
+  const narrationPreview = macroDialog.getByRole("img", {
+    name: "나레이션 미리보기",
+  });
+  await expect(narrationPreview).toContainText("수정된 첫 줄");
+  await macroDialog.getByLabel("글자색 색상 선택").fill("#ff0000");
+  await expect(narrationPreview.locator("p")).toHaveCSS(
+    "color",
+    "rgb(255, 0, 0)",
+  );
+  await macroDialog.getByRole("button", { name: "사용자 템플릿 추가" }).click();
+  await macroDialog.getByLabel("이름").fill("내 강조 템플릿");
+  await macroDialog.getByLabel("설명").fill("직접 저장한 코드");
+  await macroDialog.getByLabel("매크로 코드").fill("/desc [{{content}}]");
+  await macroDialog.getByRole("button", { name: "저장" }).click();
+  await expect(
+    macroDialog.getByRole("heading", { name: "내 강조 템플릿" }),
+  ).toBeVisible();
+  await macroDialog
+    .getByRole("button", { name: "매크로 템플릿 보관함 닫기" })
+    .click();
+
   await page
     .getByRole("combobox", { name: "1번 ScriptLine 태그" })
     .selectOption("dialogue");
@@ -101,11 +129,16 @@ test("creates and structures a scenario", async ({ page }) => {
   await expect(
     page.getByRole("combobox", { name: "1번 ScriptLine 태그" }),
   ).toHaveValue("dialogue");
-  const reloadedFirstLine = page.getByRole("textbox", {
-    name: /1번 ScriptLine/,
-  });
-  await expect(reloadedFirstLine).toHaveCSS("font-weight", "700");
-  await expect(reloadedFirstLine).toHaveCSS("text-align", "center");
+  await page.getByRole("button", { name: "템플릿" }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "매크로 템플릿 보관함" })
+      .getByRole("button", { name: /내 강조 템플릿/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "매크로 템플릿 보관함" })
+    .getByRole("button", { name: "매크로 템플릿 보관함 닫기" })
+    .click();
   await page.getByRole("button", { name: "태그 색상 설정" }).click();
   await expect(
     page
