@@ -2,7 +2,6 @@
 
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,9 +9,6 @@ const themes = ["light", "dark", "system"] as const;
 
 export function ThemeToggle() {
   const { theme = "system", setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const currentTheme = themes.includes(theme as (typeof themes)[number])
     ? (theme as (typeof themes)[number])
@@ -27,11 +23,7 @@ export function ThemeToggle() {
       variant="outline"
       size="icon"
       onClick={() => setTheme(nextTheme)}
-      aria-label={
-        mounted
-          ? `현재 ${currentTheme} 테마. ${nextTheme} 테마로 변경`
-          : "테마 변경"
-      }
+      aria-label={`현재 ${currentTheme} 테마. ${nextTheme} 테마로 변경`}
     >
       <Icon aria-hidden="true" className="size-4" />
     </Button>

@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 import Home from "./page";
 
 describe("Home", () => {
-  it("introduces the RollDesk development workspace", () => {
+  it("renders the scenario workspace", async () => {
     render(<Home />);
 
+    expect(screen.getByText("TRPG Scenario Workspace")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "TRPG Scenario Workspace" }),
+      await screen.findByRole("textbox", { name: "시나리오 제목" }),
+    ).toHaveValue("제목 없는 시나리오");
+    expect(
+      screen.getByRole("button", { name: "새 시나리오 만들기" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Initial Setup")).toBeInTheDocument();
   });
 });
