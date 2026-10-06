@@ -1,5 +1,10 @@
+import { defaultScriptLineStyle } from "@/features/scenario/script-line-style";
 import { createId } from "@/lib/utils/create-id";
-import type { ScriptLine, ScriptLineTag } from "@/types/scenario";
+import type {
+  ScriptLine,
+  ScriptLineStyle,
+  ScriptLineTag,
+} from "@/types/scenario";
 
 function reindexScriptLines(lines: ScriptLine[]) {
   return lines.map((line, order) => ({ ...line, order }));
@@ -21,6 +26,25 @@ export function updateScriptLineTag(
   return lines.map((line) => (line.id === id ? { ...line, tag } : line));
 }
 
+export function updateScriptLineStyle(
+  lines: ScriptLine[],
+  id: string,
+  changes: Partial<ScriptLineStyle>,
+) {
+  return lines.map((line) =>
+    line.id === id
+      ? {
+          ...line,
+          style: {
+            ...defaultScriptLineStyle,
+            ...line.style,
+            ...changes,
+          },
+        }
+      : line,
+  );
+}
+
 export function splitScriptLine(
   lines: ScriptLine[],
   id: string,
@@ -37,6 +61,7 @@ export function splitScriptLine(
     order: index + 1,
     text: target.text.slice(safeOffset),
     tag: target.tag,
+    style: target.style ? { ...target.style } : undefined,
   };
   const nextLines = [
     ...lines.slice(0, index),
@@ -59,6 +84,7 @@ export function insertScriptLineAfter(lines: ScriptLine[], id: string) {
     order: index + 1,
     text: "",
     tag: "unassigned",
+    style: { ...defaultScriptLineStyle },
   };
 
   return {
@@ -73,4 +99,21 @@ export function insertScriptLineAfter(lines: ScriptLine[], id: string) {
 
 export function removeScriptLine(lines: ScriptLine[], id: string) {
   return reindexScriptLines(lines.filter((line) => line.id !== id));
+}
+
+export function reorderScriptLines(
+  lines: ScriptLine[],
+  activeId: string,
+  overId: string,
+) {
+  const activeIndex = lines.findIndex((line) => line.id === activeId);
+  const overIndex = lines.findIndex((line) => line.id === overId);
+  if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) {
+    return lines;
+  }
+
+  const nextLines = [...lines];
+  const [movedLine] = nextLines.splice(activeIndex, 1);
+  nextLines.splice(overIndex, 0, movedLine);
+  return reindexScriptLines(nextLines);
 }

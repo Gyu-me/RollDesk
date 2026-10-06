@@ -1,3 +1,4 @@
+import { defaultScriptLineStyle } from "@/features/scenario/script-line-style";
 import { createId } from "@/lib/utils/create-id";
 import type { ScriptLine } from "@/types/scenario";
 
@@ -35,5 +36,6 @@ export function parseScenarioText(
       order,
       text,
       tag: "unassigned",
+      style: { ...defaultScriptLineStyle },
     }));
 }

@@ -5,8 +5,10 @@ import type { ScriptLine } from "@/types/scenario";
 import {
   insertScriptLineAfter,
   removeScriptLine,
+  reorderScriptLines,
   splitScriptLine,
   updateScriptLineTag,
+  updateScriptLineStyle,
   updateScriptLineText,
 } from "./script-line-editor";
 
@@ -39,6 +41,20 @@ describe("ScriptLine editing", () => {
     expect(result[1]).toMatchObject({ id: "line_2", tag: "unassigned" });
   });
 
+  it("updates line-level style while filling legacy defaults", () => {
+    const result = updateScriptLineStyle(lines, "line_1", {
+      bold: true,
+      textAlign: "center",
+    });
+
+    expect(result[0]?.style).toEqual({
+      bold: true,
+      italic: false,
+      textAlign: "center",
+    });
+    expect(result[1]?.style).toBeUndefined();
+  });
+
   it("splits a line at the requested cursor offset", () => {
     const result = splitScriptLine(lines, "line_1", 3);
     expect(result.lines.map((line) => line.text)).toEqual([
@@ -59,5 +75,12 @@ describe("ScriptLine editing", () => {
 
     const removed = removeScriptLine(inserted.lines, inserted.newLineId ?? "");
     expect(removed.map((line) => line.order)).toEqual([0, 1]);
+  });
+
+  it("reorders lines and recalculates their order", () => {
+    const result = reorderScriptLines(lines, "line_2", "line_1");
+
+    expect(result.map((line) => line.id)).toEqual(["line_2", "line_1"]);
+    expect(result.map((line) => line.order)).toEqual([0, 1]);
   });
 });

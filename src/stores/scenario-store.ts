@@ -4,8 +4,10 @@ import { createScenario } from "@/features/scenario/scenario-factory";
 import {
   insertScriptLineAfter,
   removeScriptLine,
+  reorderScriptLines,
   splitScriptLine,
   updateScriptLineTag,
+  updateScriptLineStyle,
   updateScriptLineText,
 } from "@/features/scenario/script-line-editor";
 import { parseScenarioText } from "@/lib/parsing/parse-scenario-text";
@@ -17,6 +19,7 @@ import {
 import type {
   Scenario,
   ScenarioSummary,
+  ScriptLineStyle,
   ScriptLineTag,
 } from "@/types/scenario";
 
@@ -35,9 +38,14 @@ interface ScenarioStore {
   structureSource: () => void;
   updateScriptLine: (id: string, text: string) => void;
   updateScriptLineTag: (id: string, tag: ScriptLineTag) => void;
+  updateScriptLineStyle: (
+    id: string,
+    changes: Partial<ScriptLineStyle>,
+  ) => void;
   splitScriptLine: (id: string, offset: number) => string | null;
   insertScriptLineAfter: (id: string) => string | null;
   deleteScriptLine: (id: string) => void;
+  reorderScriptLines: (activeId: string, overId: string) => void;
   saveActiveScenario: () => Promise<void>;
 }
 
@@ -159,6 +167,17 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     });
   },
 
+  updateScriptLineStyle: (id, changes) => {
+    const scenario = get().activeScenario;
+    if (!scenario) return;
+    set({
+      activeScenario: touchScenario(scenario, {
+        scriptLines: updateScriptLineStyle(scenario.scriptLines, id, changes),
+      }),
+      saveStatus: "dirty",
+    });
+  },
+
   splitScriptLine: (id, offset) => {
     const scenario = get().activeScenario;
     if (!scenario) return null;
@@ -189,6 +208,17 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     set({
       activeScenario: touchScenario(scenario, {
         scriptLines: removeScriptLine(scenario.scriptLines, id),
+      }),
+      saveStatus: "dirty",
+    });
+  },
+
+  reorderScriptLines: (activeId, overId) => {
+    const scenario = get().activeScenario;
+    if (!scenario || activeId === overId) return;
+    set({
+      activeScenario: touchScenario(scenario, {
+        scriptLines: reorderScriptLines(scenario.scriptLines, activeId, overId),
       }),
       saveStatus: "dirty",
     });

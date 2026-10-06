@@ -1,8 +1,27 @@
 "use client";
 
 import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
   FilePlus2,
   FileText,
+  Italic,
   LoaderCircle,
   Palette,
   PanelLeft,
@@ -10,25 +29,18 @@ import {
   RotateCcw,
   Save,
   Sparkles,
-  Tags,
   Trash2,
 } from "lucide-react";
-import {
-  useEffect,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  getScriptLineTagDefinition,
-  scriptLineTags,
-} from "@/features/scenario/script-line-tags";
+import { resolveScriptLineStyle } from "@/features/scenario/script-line-style";
+import { scriptLineTags } from "@/features/scenario/script-line-tags";
+import { SortableScriptLineCard } from "@/features/scenario/sortable-script-line-card";
 import { useScenarioStore } from "@/stores/scenario-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import type { ScriptLineTag } from "@/types/scenario";
+import type { ScriptLineStyle } from "@/types/scenario";
 
 const saveStatusText = {
   idle: "준비 중",
@@ -40,6 +52,7 @@ const saveStatusText = {
 
 export function ScenarioWorkspace() {
   const [isTagColorDialogOpen, setIsTagColorDialogOpen] = useState(false);
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<{
     id: string;
     order: number;
@@ -60,11 +73,25 @@ export function ScenarioWorkspace() {
     structureSource,
     updateScriptLine,
     updateScriptLineTag,
+    updateScriptLineStyle,
     splitScriptLine,
     insertScriptLineAfter,
     deleteScriptLine,
+    reorderScriptLines,
     saveActiveScenario,
   } = useScenarioStore();
+  const selectedScriptLine = activeScenario?.scriptLines.find(
+    (line) => line.id === selectedLineId,
+  );
+  const selectedLineStyle = resolveScriptLineStyle(selectedScriptLine?.style);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const focusScriptLine = (id: string) => {
     window.requestAnimationFrame(() => {
@@ -76,13 +103,8 @@ export function ScenarioWorkspace() {
     });
   };
 
-  const handleScriptLineKeyDown = (
-    event: KeyboardEvent<HTMLTextAreaElement>,
-    id: string,
-  ) => {
-    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    const newLineId = splitScriptLine(id, event.currentTarget.selectionStart);
+  const handleSplitScriptLine = (id: string, offset: number) => {
+    const newLineId = splitScriptLine(id, offset);
     if (newLineId) focusScriptLine(newLineId);
   };
 
@@ -91,14 +113,29 @@ export function ScenarioWorkspace() {
     if (newLineId) focusScriptLine(newLineId);
   };
 
+  const handleAppendLine = () => {
+    const lines = activeScenario?.scriptLines;
+    const lastLine = lines?.[lines.length - 1];
+    if (lastLine) handleInsertLine(lastLine.id);
+  };
+
   const handleDeleteLine = (id: string, order: number, text: string) => {
     setPendingDeleteLine({ id, order, text });
+  };
+
+  const handleStyleChange = (changes: Partial<ScriptLineStyle>) => {
+    if (selectedLineId) updateScriptLineStyle(selectedLineId, changes);
   };
 
   const confirmDeleteLine = () => {
     if (!pendingDeleteLine) return;
     deleteScriptLine(pendingDeleteLine.id);
     setPendingDeleteLine(null);
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    reorderScriptLines(String(active.id), String(over.id));
   };
 
   useEffect(() => {
@@ -117,8 +154,8 @@ export function ScenarioWorkspace() {
   }, [activeScenario?.updatedAt, saveActiveScenario, saveStatus]);
 
   return (
-    <main className="bg-background min-h-screen p-3 sm:p-5 lg:h-screen lg:min-h-0 lg:overflow-hidden">
-      <div className="border-border bg-surface mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1800px] flex-col overflow-hidden rounded-2xl border shadow-sm sm:min-h-[calc(100vh-2.5rem)] lg:h-[calc(100vh-2.5rem)] lg:min-h-0">
+    <main className="bg-background h-dvh overflow-hidden p-3 sm:p-5">
+      <div className="border-border bg-surface mx-auto flex h-full min-h-0 max-w-[1800px] flex-col overflow-hidden rounded-2xl border shadow-sm">
         <header className="border-border flex h-16 shrink-0 items-center justify-between border-b px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-xl">
@@ -150,8 +187,8 @@ export function ScenarioWorkspace() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[210px_minmax(300px,0.8fr)_minmax(380px,1.2fr)]">
-          <aside className="border-border bg-surface-muted/50 border-b p-4 lg:min-h-0 lg:[scrollbar-gutter:stable] lg:overflow-y-auto lg:border-r lg:border-b-0">
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[210px_minmax(300px,0.8fr)_minmax(380px,1.2fr)] lg:grid-rows-1">
+          <aside className="border-border bg-surface-muted/50 max-h-40 [scrollbar-gutter:stable] overflow-y-auto border-b p-4 lg:max-h-none lg:min-h-0 lg:border-r lg:border-b-0">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">시나리오</h2>
@@ -210,7 +247,7 @@ export function ScenarioWorkspace() {
             </nav>
           </aside>
 
-          <section className="border-border flex min-h-[520px] flex-col border-b p-4 sm:p-6 lg:min-h-0 lg:border-r lg:border-b-0">
+          <section className="border-border flex min-h-0 flex-col overflow-hidden border-b p-4 sm:p-6 lg:border-r lg:border-b-0">
             {isLoading || !activeScenario ? (
               <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 text-sm">
                 <LoaderCircle
@@ -265,18 +302,30 @@ export function ScenarioWorkspace() {
             )}
           </section>
 
-          <section className="bg-surface-muted/30 flex min-h-[420px] flex-col p-4 sm:p-6 lg:min-h-0">
-            <div className="mb-4 flex items-end justify-between gap-3">
+          <section className="bg-surface-muted/30 flex min-h-0 flex-col overflow-hidden p-4 sm:p-6">
+            <div className="mb-2 flex items-end justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">구조화 결과</h2>
                 <p className="text-muted-foreground text-xs">
-                  직접 수정하거나 Enter로 줄을 나눌 수 있습니다.
+                  직접 수정하거나 Enter로 나누고, 손잡이로 순서를 바꿀 수
+                  있습니다.
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground text-xs">
                   {activeScenario?.scriptLines.length ?? 0} lines
                 </span>
+                {activeScenario?.scriptLines.length ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAppendLine}
+                    aria-label="새 ScriptLine 추가"
+                  >
+                    <Plus aria-hidden="true" data-icon="inline-start" />새 줄
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -290,104 +339,105 @@ export function ScenarioWorkspace() {
             </div>
 
             {activeScenario?.scriptLines.length ? (
-              <ol
-                className="min-h-0 flex-1 [scrollbar-gutter:stable] space-y-2 overflow-y-auto pr-1"
-                aria-label="구조화된 ScriptLine 목록"
-              >
-                {activeScenario.scriptLines.map((line) => (
-                  <li key={line.id}>
-                    <div
-                      className="script-line-card border-border group grid grid-cols-[2rem_minmax(0,1fr)_2rem] gap-3 rounded-xl border border-l-4 p-3"
-                      style={
-                        {
-                          "--script-line-tag-color": tagColors[line.tag],
-                        } as CSSProperties
+              <div className="border-border bg-background mb-3 flex min-h-8 items-center justify-between gap-3 rounded-lg border px-2 py-1">
+                <span className="text-muted-foreground min-w-0 truncate text-xs">
+                  {selectedScriptLine
+                    ? `${selectedScriptLine.order + 1}번 줄 꾸미기`
+                    : "꾸밀 ScriptLine을 선택하세요"}
+                </span>
+                <div
+                  className="flex shrink-0 items-center gap-0.5"
+                  role="toolbar"
+                  aria-label="선택한 ScriptLine 꾸미기"
+                >
+                  <Button
+                    type="button"
+                    variant={selectedLineStyle.bold ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    disabled={!selectedScriptLine}
+                    aria-label="굵게"
+                    aria-pressed={selectedLineStyle.bold}
+                    onClick={() =>
+                      handleStyleChange({ bold: !selectedLineStyle.bold })
+                    }
+                  >
+                    <Bold aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedLineStyle.italic ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    disabled={!selectedScriptLine}
+                    aria-label="기울임"
+                    aria-pressed={selectedLineStyle.italic}
+                    onClick={() =>
+                      handleStyleChange({ italic: !selectedLineStyle.italic })
+                    }
+                  >
+                    <Italic aria-hidden="true" />
+                  </Button>
+                  <span
+                    aria-hidden="true"
+                    className="bg-border mx-1 h-4 w-px"
+                  />
+                  {(
+                    [
+                      ["left", "왼쪽 정렬", AlignLeft],
+                      ["center", "가운데 정렬", AlignCenter],
+                      ["right", "오른쪽 정렬", AlignRight],
+                    ] as const
+                  ).map(([textAlign, label, Icon]) => (
+                    <Button
+                      key={textAlign}
+                      type="button"
+                      variant={
+                        selectedLineStyle.textAlign === textAlign
+                          ? "secondary"
+                          : "ghost"
                       }
+                      size="icon-xs"
+                      disabled={!selectedScriptLine}
+                      aria-label={label}
+                      aria-pressed={selectedLineStyle.textAlign === textAlign}
+                      onClick={() => handleStyleChange({ textAlign })}
                     >
-                      <span className="bg-surface-muted text-muted-foreground flex size-8 items-center justify-center rounded-lg font-mono text-xs">
-                        {line.order + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <label
-                            htmlFor={`script-line-${line.id}`}
-                            className="text-muted-foreground text-[0.65rem] font-medium tracking-wider uppercase"
-                          >
-                            {line.order + 1}번 ScriptLine
-                          </label>
-                          <div className="relative flex items-center">
-                            <Tags
-                              aria-hidden="true"
-                              className="text-muted-foreground pointer-events-none absolute left-2 size-3"
-                            />
-                            <label
-                              className="sr-only"
-                              htmlFor={`script-line-tag-${line.id}`}
-                            >
-                              {line.order + 1}번 ScriptLine 태그
-                            </label>
-                            <select
-                              id={`script-line-tag-${line.id}`}
-                              value={line.tag}
-                              onChange={(event) =>
-                                updateScriptLineTag(
-                                  line.id,
-                                  event.target.value as ScriptLineTag,
-                                )
-                              }
-                              title={
-                                getScriptLineTagDefinition(line.tag).description
-                              }
-                              className="script-line-tag-select focus-visible:border-ring focus-visible:ring-ring/30 h-7 rounded-lg border py-1 pr-7 pl-7 text-xs font-medium outline-none focus-visible:ring-2"
-                            >
-                              {scriptLineTags.map((tag) => (
-                                <option key={tag.value} value={tag.value}>
-                                  {tag.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <textarea
-                          id={`script-line-${line.id}`}
-                          value={line.text}
-                          rows={2}
-                          onChange={(event) =>
-                            updateScriptLine(line.id, event.target.value)
-                          }
-                          onKeyDown={(event) =>
-                            handleScriptLineKeyDown(event, line.id)
-                          }
-                          className="placeholder:text-muted-foreground focus-visible:ring-ring mt-1 w-full resize-none rounded-md bg-transparent px-1 py-1 text-sm leading-6 outline-none focus-visible:ring-2"
-                          placeholder="ScriptLine 내용을 입력하세요"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() =>
-                          handleDeleteLine(line.id, line.order, line.text)
-                        }
-                        aria-label={`${line.order + 1}번 ScriptLine 삭제`}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 aria-hidden="true" />
-                      </Button>
-                    </div>
-                    <div className="flex h-5 items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => handleInsertLine(line.id)}
-                        aria-label={`${line.order + 1}번 줄 뒤에 새 ScriptLine 추가`}
-                        className="border-border bg-background text-muted-foreground hover:border-ring hover:text-foreground flex size-5 items-center justify-center rounded-full border transition-colors"
-                      >
-                        <Plus aria-hidden="true" className="size-3" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+                      <Icon aria-hidden="true" />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {activeScenario?.scriptLines.length ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={activeScenario.scriptLines.map((line) => line.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ol
+                    className="min-h-0 flex-1 [scrollbar-gutter:stable] space-y-2 overflow-y-auto pr-1"
+                    aria-label="구조화된 ScriptLine 목록"
+                  >
+                    {activeScenario.scriptLines.map((line) => (
+                      <SortableScriptLineCard
+                        key={line.id}
+                        line={line}
+                        tagColor={tagColors[line.tag]}
+                        isSelected={line.id === selectedLineId}
+                        onSelect={setSelectedLineId}
+                        onUpdateText={updateScriptLine}
+                        onUpdateTag={updateScriptLineTag}
+                        onSplit={handleSplitScriptLine}
+                        onRequestDelete={handleDeleteLine}
+                      />
+                    ))}
+                  </ol>
+                </SortableContext>
+              </DndContext>
             ) : (
               <div className="border-border text-muted-foreground flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
                 <Sparkles aria-hidden="true" className="mb-3 size-6" />
