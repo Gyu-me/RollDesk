@@ -41,6 +41,7 @@ export const useMacroStore = create<MacroStore>((set, get) => ({
       name: input.name.trim(),
       memo: input.memo.trim(),
       code: input.code,
+      defaultTag: input.defaultTag,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

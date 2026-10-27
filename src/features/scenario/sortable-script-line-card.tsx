@@ -20,6 +20,8 @@ import type { ScriptLine, ScriptLineTag } from "@/types/scenario";
 interface SortableScriptLineCardProps {
   line: ScriptLine;
   tagColor: string;
+  displayText: string;
+  isReadOnly: boolean;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onUpdateText: (id: string, text: string) => void;
@@ -31,6 +33,8 @@ interface SortableScriptLineCardProps {
 export function SortableScriptLineCard({
   line,
   tagColor,
+  displayText,
+  isReadOnly,
   isSelected,
   onSelect,
   onUpdateText,
@@ -58,6 +62,7 @@ export function SortableScriptLineCard({
   } as CSSProperties;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isReadOnly) return;
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
     event.preventDefault();
     onSplit(line.id, event.currentTarget.selectionStart);
@@ -67,8 +72,13 @@ export function SortableScriptLineCard({
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "0px";
-    textarea.style.height = `${Math.max(textarea.scrollHeight, 32)}px`;
-  }, [line.text]);
+    const nextHeight = isReadOnly
+      ? Math.min(Math.max(textarea.scrollHeight, 32), 112)
+      : Math.max(textarea.scrollHeight, 32);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY =
+      isReadOnly && textarea.scrollHeight > 112 ? "auto" : "hidden";
+  }, [displayText, isReadOnly]);
 
   return (
     <li
@@ -116,16 +126,21 @@ export function SortableScriptLineCard({
           </select>
         </div>
         <label className="sr-only" htmlFor={`script-line-${line.id}`}>
-          {line.order + 1}번 ScriptLine
+          {line.order + 1}번 ScriptLine{isReadOnly ? " 출력 코드" : ""}
         </label>
         <textarea
           ref={textareaRef}
           id={`script-line-${line.id}`}
-          value={line.text}
+          value={displayText}
           rows={1}
-          onChange={(event) => onUpdateText(line.id, event.target.value)}
+          readOnly={isReadOnly}
+          onChange={(event) => {
+            if (!isReadOnly) onUpdateText(line.id, event.target.value);
+          }}
           onKeyDown={handleKeyDown}
-          className="placeholder:text-muted-foreground focus-visible:ring-ring min-h-8 w-full resize-none overflow-hidden rounded-md bg-transparent px-2 py-1.5 text-sm leading-5 outline-none focus-visible:ring-2"
+          className={`placeholder:text-muted-foreground focus-visible:ring-ring min-h-8 w-full resize-none overflow-hidden rounded-md bg-transparent px-2 py-1.5 text-sm leading-5 outline-none focus-visible:ring-2 ${
+            isReadOnly ? "bg-background/45 font-mono text-xs" : ""
+          }`}
           placeholder="ScriptLine 내용을 입력하세요"
         />
         <Button

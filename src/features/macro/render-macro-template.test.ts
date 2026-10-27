@@ -8,6 +8,20 @@ import {
 } from "./render-macro-template";
 
 describe("MacroTemplate rendering", () => {
+  it("assigns the intended default Tag to built-in templates", () => {
+    expect(
+      Object.fromEntries(
+        macroTemplates.map((template) => [template.id, template.defaultTag]),
+      ),
+    ).toMatchObject({
+      narration: "narration",
+      "npc-speech": "dialogue",
+      "roll-basic": "check",
+      "judgement-button": "check",
+      divider: "code",
+    });
+  });
+
   it("uses selected ScriptLine content and configured values", () => {
     const template = macroTemplates.find(({ id }) => id === "narration");
     expect(template).toBeDefined();

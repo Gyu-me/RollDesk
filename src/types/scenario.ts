@@ -1,5 +1,17 @@
 export type ScriptLineTag =
-  "unassigned" | "narration" | "dialogue" | "investigation" | "check";
+  "unassigned" | "narration" | "dialogue" | "investigation" | "check" | "code";
+
+export interface MacroBinding {
+  scriptLineId: string;
+  platform: "roll20";
+  templateId: string;
+  templateSource: "built-in" | "user";
+  templateName: string;
+  templateCode: string;
+  fieldValues: Record<string, string>;
+  appliedTag: ScriptLineTag;
+  updatedAt: string;
+}
 
 export interface ScriptLine {
   id: string;
@@ -14,6 +26,7 @@ export interface Scenario {
   title: string;
   sourceText: string;
   scriptLines: ScriptLine[];
+  macroBindings?: MacroBinding[];
   createdAt: string;
   updatedAt: string;
 }

@@ -15,7 +15,9 @@ import {
   listScenarios,
   saveScenario,
 } from "@/lib/storage/scenario-repository";
+import type { ApplyMacroInput } from "@/types/macro";
 import type {
+  MacroBinding,
   Scenario,
   ScenarioSummary,
   ScriptLineTag,
@@ -36,6 +38,7 @@ interface ScenarioStore {
   structureSource: () => void;
   updateScriptLine: (id: string, text: string) => void;
   updateScriptLineTag: (id: string, tag: ScriptLineTag) => void;
+  applyMacroToScriptLine: (id: string, input: ApplyMacroInput) => void;
   splitScriptLine: (id: string, offset: number) => string | null;
   insertScriptLineAfter: (id: string) => string | null;
   deleteScriptLine: (id: string) => void;
@@ -134,6 +137,7 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     set({
       activeScenario: touchScenario(scenario, {
         scriptLines: parseScenarioText(scenario.sourceText, scenario.id),
+        macroBindings: [],
       }),
       saveStatus: "dirty",
     });
@@ -156,6 +160,52 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     set({
       activeScenario: touchScenario(scenario, {
         scriptLines: updateScriptLineTag(scenario.scriptLines, id, tag),
+        macroBindings: (scenario.macroBindings ?? []).map((binding) =>
+          binding.scriptLineId === id
+            ? {
+                ...binding,
+                appliedTag: tag,
+                updatedAt: new Date().toISOString(),
+              }
+            : binding,
+        ),
+      }),
+      saveStatus: "dirty",
+    });
+  },
+
+  applyMacroToScriptLine: (id, input) => {
+    const scenario = get().activeScenario;
+    if (!scenario || !scenario.scriptLines.some((line) => line.id === id)) {
+      return;
+    }
+
+    const binding: MacroBinding = {
+      scriptLineId: id,
+      platform: "roll20",
+      templateId: input.templateId,
+      templateSource: input.templateSource,
+      templateName: input.templateName,
+      templateCode: input.templateCode,
+      fieldValues: { ...input.fieldValues },
+      appliedTag: input.tag,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      activeScenario: touchScenario(scenario, {
+        scriptLines: scenario.scriptLines.map((line) =>
+          line.id === id
+            ? { ...line, text: input.content, tag: input.tag }
+            : line,
+        ),
+        macroBindings: [
+          binding,
+          ...(scenario.macroBindings ?? []).filter(
+            (item) =>
+              item.scriptLineId !== id || item.platform !== binding.platform,
+          ),
+        ],
       }),
       saveStatus: "dirty",
     });
@@ -191,6 +241,9 @@ export const useScenarioStore = create<ScenarioStore>((set, get) => ({
     set({
       activeScenario: touchScenario(scenario, {
         scriptLines: removeScriptLine(scenario.scriptLines, id),
+        macroBindings: (scenario.macroBindings ?? []).filter(
+          (binding) => binding.scriptLineId !== id,
+        ),
       }),
       saveStatus: "dirty",
     });

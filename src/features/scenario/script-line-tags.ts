@@ -32,6 +32,11 @@ export const scriptLineTags: ScriptLineTagDefinition[] = [
     label: "판정",
     description: "주사위 판정과 조건 안내",
   },
+  {
+    value: "code",
+    label: "코드",
+    description: "장식과 매크로 등 플랫폼 출력 코드",
+  },
 ];
 
 export function getScriptLineTagDefinition(tag: ScriptLineTag) {

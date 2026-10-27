@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import {
   BookOpen,
+  Code2,
   FilePlus2,
   FileText,
   LoaderCircle,
@@ -36,6 +37,7 @@ import { scriptLineTags } from "@/features/scenario/script-line-tags";
 import { SortableScriptLineCard } from "@/features/scenario/sortable-script-line-card";
 import { useScenarioStore } from "@/stores/scenario-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { transformScriptLineForRoll20 } from "@/lib/transformers/roll20-transformer";
 
 const saveStatusText = {
   idle: "준비 중",
@@ -48,6 +50,7 @@ const saveStatusText = {
 export function ScenarioWorkspace() {
   const [isTagColorDialogOpen, setIsTagColorDialogOpen] = useState(false);
   const [isMacroLibraryOpen, setIsMacroLibraryOpen] = useState(false);
+  const [resultView, setResultView] = useState<"source" | "output">("source");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<{
     id: string;
@@ -69,6 +72,7 @@ export function ScenarioWorkspace() {
     structureSource,
     updateScriptLine,
     updateScriptLineTag,
+    applyMacroToScriptLine,
     splitScriptLine,
     insertScriptLineAfter,
     deleteScriptLine,
@@ -100,6 +104,11 @@ export function ScenarioWorkspace() {
   const handleSplitScriptLine = (id: string, offset: number) => {
     const newLineId = splitScriptLine(id, offset);
     if (newLineId) focusScriptLine(newLineId);
+  };
+
+  const handleStructureSource = () => {
+    structureSource();
+    setResultView("source");
   };
 
   const handleInsertLine = (id: string) => {
@@ -268,7 +277,7 @@ export function ScenarioWorkspace() {
                   </div>
                   <Button
                     type="button"
-                    onClick={structureSource}
+                    onClick={handleStructureSource}
                     disabled={!activeScenario.sourceText.trim()}
                   >
                     <Sparkles aria-hidden="true" data-icon="inline-start" />
@@ -302,6 +311,32 @@ export function ScenarioWorkspace() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {activeScenario?.scriptLines.length ? (
+                  <span className="border-border bg-background flex items-center rounded-lg border p-0.5">
+                    <Button
+                      type="button"
+                      variant={resultView === "source" ? "secondary" : "ghost"}
+                      size="icon-xs"
+                      onClick={() => setResultView("source")}
+                      aria-label="원문 보기"
+                      aria-pressed={resultView === "source"}
+                      title="원문 보기"
+                    >
+                      <FileText aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={resultView === "output" ? "secondary" : "ghost"}
+                      size="icon-xs"
+                      onClick={() => setResultView("output")}
+                      aria-label="출력 코드 보기"
+                      aria-pressed={resultView === "output"}
+                      title="출력 코드 보기"
+                    >
+                      <Code2 aria-hidden="true" />
+                    </Button>
+                  </span>
+                ) : null}
                 <span className="text-muted-foreground text-xs">
                   {activeScenario?.scriptLines.length ?? 0} lines
                 </span>
@@ -351,19 +386,33 @@ export function ScenarioWorkspace() {
                     className="min-h-0 flex-1 [scrollbar-gutter:stable] space-y-2 overflow-y-auto pr-1"
                     aria-label="구조화된 ScriptLine 목록"
                   >
-                    {activeScenario.scriptLines.map((line) => (
-                      <SortableScriptLineCard
-                        key={line.id}
-                        line={line}
-                        tagColor={tagColors[line.tag]}
-                        isSelected={line.id === selectedLineId}
-                        onSelect={setSelectedLineId}
-                        onUpdateText={updateScriptLine}
-                        onUpdateTag={updateScriptLineTag}
-                        onSplit={handleSplitScriptLine}
-                        onRequestDelete={handleDeleteLine}
-                      />
-                    ))}
+                    {activeScenario.scriptLines.map((line) => {
+                      const binding = activeScenario.macroBindings?.find(
+                        (item) =>
+                          item.scriptLineId === line.id &&
+                          item.platform === "roll20",
+                      );
+                      const displayText =
+                        resultView === "output" && binding
+                          ? transformScriptLineForRoll20(line, binding)
+                          : line.text;
+
+                      return (
+                        <SortableScriptLineCard
+                          key={line.id}
+                          line={line}
+                          tagColor={tagColors[line.tag]}
+                          displayText={displayText}
+                          isReadOnly={resultView === "output"}
+                          isSelected={line.id === selectedLineId}
+                          onSelect={setSelectedLineId}
+                          onUpdateText={updateScriptLine}
+                          onUpdateTag={updateScriptLineTag}
+                          onSplit={handleSplitScriptLine}
+                          onRequestDelete={handleDeleteLine}
+                        />
+                      );
+                    })}
                   </ol>
                 </SortableContext>
               </DndContext>
@@ -537,6 +586,13 @@ export function ScenarioWorkspace() {
       {isMacroLibraryOpen ? (
         <MacroLibraryDialog
           initialContent={selectedScriptLine?.text ?? ""}
+          targetLineId={selectedLineId}
+          onApply={(input) => {
+            if (selectedLineId) {
+              applyMacroToScriptLine(selectedLineId, input);
+              setResultView("output");
+            }
+          }}
           onClose={() => setIsMacroLibraryOpen(false)}
         />
       ) : null}

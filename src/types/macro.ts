@@ -1,3 +1,5 @@
+import type { ScriptLineTag } from "@/types/scenario";
+
 export type MacroCategoryId =
   "basic" | "roll" | "info" | "decorate" | "scene" | "custom";
 
@@ -38,6 +40,7 @@ export interface MacroTemplate {
   previewText: string;
   keywords: string[];
   platform: "roll20";
+  defaultTag: ScriptLineTag;
   previewKind: MacroPreviewKind;
   code: string;
   fields: MacroField[];
@@ -48,6 +51,7 @@ export interface UserMacro {
   name: string;
   memo: string;
   code: string;
+  defaultTag?: ScriptLineTag;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,4 +60,15 @@ export interface UserMacroInput {
   name: string;
   memo: string;
   code: string;
+  defaultTag: ScriptLineTag;
+}
+
+export interface ApplyMacroInput {
+  templateId: string;
+  templateSource: "built-in" | "user";
+  templateName: string;
+  templateCode: string;
+  fieldValues: Record<string, string>;
+  content: string;
+  tag: ScriptLineTag;
 }

@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -24,11 +25,23 @@ import {
   getDefaultMacroValues,
   renderMacroCode,
 } from "@/features/macro/render-macro-template";
+import {
+  getScriptLineTagDefinition,
+  scriptLineTags,
+} from "@/features/scenario/script-line-tags";
 import { useMacroStore } from "@/stores/macro-store";
-import type { MacroTemplate, UserMacroInput } from "@/types/macro";
+import { useSettingsStore } from "@/stores/settings-store";
+import type {
+  ApplyMacroInput,
+  MacroTemplate,
+  UserMacroInput,
+} from "@/types/macro";
+import type { ScriptLineTag } from "@/types/scenario";
 
 interface MacroLibraryDialogProps {
   initialContent: string;
+  targetLineId: string | null;
+  onApply: (input: ApplyMacroInput) => void;
   onClose: () => void;
 }
 
@@ -38,6 +51,7 @@ const emptyDraft: UserMacroInput = {
   name: "",
   memo: "",
   code: "{{content}}",
+  defaultTag: "code",
 };
 
 function matchesQuery(values: string[], query: string) {
@@ -48,8 +62,17 @@ function matchesQuery(values: string[], query: string) {
   );
 }
 
+function getTemplatePreferenceKey(
+  source: "built-in" | "user",
+  templateId: string,
+) {
+  return `${source}:${templateId}`;
+}
+
 export function MacroLibraryDialog({
   initialContent,
+  targetLineId,
+  onApply,
   onClose,
 }: MacroLibraryDialogProps) {
   const {
@@ -60,6 +83,7 @@ export function MacroLibraryDialog({
     saveUserMacro,
     deleteUserMacro,
   } = useMacroStore();
+  const { macroTagPreferences, setMacroTagPreference } = useSettingsStore();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(firstTemplate?.id ?? "");
   const [content, setContent] = useState(
@@ -67,6 +91,13 @@ export function MacroLibraryDialog({
   );
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(
     firstTemplate ? getDefaultMacroValues(firstTemplate) : {},
+  );
+  const [applyTag, setApplyTag] = useState<ScriptLineTag>(
+    firstTemplate
+      ? (macroTagPreferences[
+          getTemplatePreferenceKey("built-in", firstTemplate.id)
+        ] ?? firstTemplate.defaultTag)
+      : "unassigned",
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<UserMacroInput>(emptyDraft);
@@ -109,6 +140,10 @@ export function MacroLibraryDialog({
   const selectTemplate = (template: MacroTemplate) => {
     setSelectedId(template.id);
     setFieldValues(getDefaultMacroValues(template));
+    setApplyTag(
+      macroTagPreferences[getTemplatePreferenceKey("built-in", template.id)] ??
+        template.defaultTag,
+    );
     setContent(initialContent || template.previewText);
     setEditingId(null);
     setCopyStatus("idle");
@@ -116,8 +151,18 @@ export function MacroLibraryDialog({
   };
 
   const selectUserMacro = (id: string) => {
+    const userMacro = userMacros.find((item) => item.id === id);
     setSelectedId(id);
     setFieldValues({});
+    setApplyTag(
+      userMacro
+        ? (macroTagPreferences[
+            getTemplatePreferenceKey("user", userMacro.id)
+          ] ??
+            userMacro.defaultTag ??
+            "code")
+        : "code",
+    );
     setContent(initialContent);
     setEditingId(null);
     setCopyStatus("idle");
@@ -137,6 +182,7 @@ export function MacroLibraryDialog({
       name: selectedUserMacro.name,
       memo: selectedUserMacro.memo,
       code: selectedUserMacro.code,
+      defaultTag: selectedUserMacro.defaultTag ?? "code",
     });
     setIsDeleteConfirming(false);
   };
@@ -150,6 +196,11 @@ export function MacroLibraryDialog({
     setSelectedId(saved.id);
     setEditingId(null);
     setFieldValues({});
+    setApplyTag(saved.defaultTag ?? "code");
+    setMacroTagPreference(
+      getTemplatePreferenceKey("user", saved.id),
+      saved.defaultTag ?? "code",
+    );
   };
 
   const handleDeleteUserMacro = async () => {
@@ -158,6 +209,13 @@ export function MacroLibraryDialog({
     const fallback = firstTemplate;
     setSelectedId(fallback?.id ?? "");
     setFieldValues(fallback ? getDefaultMacroValues(fallback) : {});
+    setApplyTag(
+      fallback
+        ? (macroTagPreferences[
+            getTemplatePreferenceKey("built-in", fallback.id)
+          ] ?? fallback.defaultTag)
+        : "unassigned",
+    );
     setIsDeleteConfirming(false);
   };
 
@@ -167,6 +225,35 @@ export function MacroLibraryDialog({
       setCopyStatus("copied");
     } catch {
       setCopyStatus("error");
+    }
+  };
+
+  const handleApply = () => {
+    if (!targetLineId || (!selectedTemplate && !selectedUserMacro)) return;
+    onApply({
+      templateId: selectedTemplate?.id ?? selectedUserMacro?.id ?? "",
+      templateSource: selectedTemplate ? "built-in" : "user",
+      templateName: selectedTemplate?.name ?? selectedUserMacro?.name ?? "",
+      templateCode: selectedCode,
+      fieldValues: { ...fieldValues },
+      content,
+      tag: applyTag,
+    });
+    onClose();
+  };
+
+  const handleApplyTagChange = (tag: ScriptLineTag) => {
+    setApplyTag(tag);
+    if (selectedTemplate) {
+      setMacroTagPreference(
+        getTemplatePreferenceKey("built-in", selectedTemplate.id),
+        tag,
+      );
+    } else if (selectedUserMacro) {
+      setMacroTagPreference(
+        getTemplatePreferenceKey("user", selectedUserMacro.id),
+        tag,
+      );
     }
   };
 
@@ -269,8 +356,19 @@ export function MacroLibraryDialog({
                               compact
                             />
                             <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold">
-                                {template.name}
+                              <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                                <span className="truncate">
+                                  {template.name}
+                                </span>
+                                <span className="text-muted-foreground shrink-0 text-[0.65rem] font-medium">
+                                  (
+                                  {
+                                    getScriptLineTagDefinition(
+                                      template.defaultTag,
+                                    ).label
+                                  }
+                                  )
+                                </span>
                               </span>
                               <span className="text-muted-foreground mt-0.5 line-clamp-2 block text-xs leading-4">
                                 {template.memo}
@@ -321,8 +419,17 @@ export function MacroLibraryDialog({
                             </span>
                           </span>
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">
-                              {userMacro.name}
+                            <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                              <span className="truncate">{userMacro.name}</span>
+                              <span className="text-muted-foreground shrink-0 text-[0.65rem] font-medium">
+                                (
+                                {
+                                  getScriptLineTagDefinition(
+                                    userMacro.defaultTag ?? "code",
+                                  ).label
+                                }
+                                )
+                              </span>
                             </span>
                             <span className="text-muted-foreground mt-0.5 line-clamp-2 block text-xs leading-4">
                               {userMacro.memo || "설명 없음"}
@@ -391,6 +498,25 @@ export function MacroLibraryDialog({
                     />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
+                    기본 태그
+                    <select
+                      value={draft.defaultTag}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          defaultTag: event.target.value as ScriptLineTag,
+                        }))
+                      }
+                      className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/30 h-9 rounded-lg border px-3 font-normal outline-none focus-visible:ring-2"
+                    >
+                      {scriptLineTags.map((tag) => (
+                        <option key={tag.value} value={tag.value}>
+                          {tag.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
                     매크로 코드
                     <textarea
                       value={draft.code}
@@ -434,6 +560,9 @@ export function MacroLibraryDialog({
                       </h3>
                       <span className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[0.65rem]">
                         {selectedTemplate ? "기본 제공" : "사용자 저장"}
+                      </span>
+                      <span className="border-border text-muted-foreground rounded-md border px-1.5 py-0.5 text-[0.65rem]">
+                        {getScriptLineTagDefinition(applyTag).label}
                       </span>
                     </div>
                     <p className="text-muted-foreground mt-1 text-sm">
@@ -501,6 +630,28 @@ export function MacroLibraryDialog({
                       placeholder="템플릿에 넣을 내용을 입력하세요"
                       className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/30 resize-y rounded-lg border p-3 font-normal outline-none focus-visible:ring-2"
                     />
+                  </label>
+
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    적용 태그
+                    <select
+                      value={applyTag}
+                      onChange={(event) =>
+                        handleApplyTagChange(
+                          event.target.value as ScriptLineTag,
+                        )
+                      }
+                      className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/30 h-9 rounded-lg border px-3 font-normal outline-none focus-visible:ring-2"
+                    >
+                      {scriptLineTags.map((tag) => (
+                        <option key={tag.value} value={tag.value}>
+                          {tag.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-muted-foreground text-xs font-normal">
+                      적용 시 선택한 ScriptLine의 Tag도 함께 변경됩니다.
+                    </span>
                   </label>
 
                   {selectedTemplate?.fields.map((field) => (
@@ -593,23 +744,39 @@ export function MacroLibraryDialog({
                     >
                       생성된 코드
                     </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleCopy()}
-                      disabled={!generatedCode}
-                    >
-                      {copyStatus === "copied" ? (
-                        <Check aria-hidden="true" data-icon="inline-start" />
-                      ) : (
-                        <Clipboard
-                          aria-hidden="true"
-                          data-icon="inline-start"
-                        />
-                      )}
-                      {copyStatus === "copied" ? "복사됨" : "코드 복사"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleApply}
+                        disabled={!targetLineId || !generatedCode}
+                        title={
+                          targetLineId
+                            ? undefined
+                            : "구조화 결과에서 ScriptLine을 먼저 선택하세요."
+                        }
+                      >
+                        <Sparkles aria-hidden="true" data-icon="inline-start" />
+                        선택 줄에 적용
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleCopy()}
+                        disabled={!generatedCode}
+                      >
+                        {copyStatus === "copied" ? (
+                          <Check aria-hidden="true" data-icon="inline-start" />
+                        ) : (
+                          <Clipboard
+                            aria-hidden="true"
+                            data-icon="inline-start"
+                          />
+                        )}
+                        {copyStatus === "copied" ? "복사됨" : "코드 복사"}
+                      </Button>
+                    </div>
                   </div>
                   <textarea
                     id="generated-macro-code"

@@ -30,6 +30,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "내용을 입력하세요",
     keywords: ["나레이션", "묘사", "desc", "글꼴"],
     platform: "roll20",
+    defaultTag: "narration",
     previewKind: "narration",
     code: `/desc [{{content}}](#" style="${FONT_FAMILY} ${TEXT_DECORATION_NONE} color: {{textColor}}; font-weight: {{fontWeight}}; font-style: {{fontStyle}};")`,
     fields: [
@@ -76,6 +77,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "NPC가 대사를 말합니다",
     keywords: ["NPC", "대사", "as"],
     platform: "roll20",
+    defaultTag: "dialogue",
     previewKind: "speech",
     code: `/as "{{speaker}}" {{content}}`,
     fields: [
@@ -96,6 +98,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "1d100",
     keywords: ["주사위", "판정", "roll", "다이스"],
     platform: "roll20",
+    defaultTag: "check",
     previewKind: "dice",
     code: `/r 1d{{diceSides}}`,
     fields: [
@@ -113,9 +116,10 @@ export const macroTemplates: MacroTemplate[] = [
     order: 2,
     name: "판정 버튼",
     memo: "기능명과 그라데이션을 설정하는 판정 표시",
-    previewText: "✷ 기능 판정 ✷",
+    previewText: "이성치",
     keywords: ["판정", "버튼", "기능", "그라데이션"],
     platform: "roll20",
+    defaultTag: "check",
     previewKind: "judgement",
     code: `/desc [　✷　{{content}} 판정　✷　](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} font-style: normal; text-align: center; display: inline-block; color: white; border-radius: 20px; padding: 5px 15px; background-image: linear-gradient(135deg&#44; {{gradientStart}}&#44; {{gradientEnd}}&#41;;")`,
     fields: [
@@ -142,6 +146,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "첫 번째 줄",
     keywords: ["얇은 글씨", "두 줄", "캐치프레이즈"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "thin-two-lines",
     code: `/desc [{{content}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{textColor}}; font-size: 12px; font-weight: normal;") [{{secondLine}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{textColor}}; display: block; font-size: 12px; font-weight: normal;")`,
     fields: [
@@ -168,6 +173,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "얇은 글씨",
     keywords: ["얇은 글씨", "한 줄"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "thin-one-line",
     code: `/desc [{{content}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{textColor}}; font-size: 12px; font-weight: normal;")`,
     fields: [
@@ -188,6 +194,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "KPC / PC",
     keywords: ["KPC", "PC", "이름"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "kpc-pc",
     code: `/desc [KPC](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{accentColor}};") [{{kpcName}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: #333333;")　[PC](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{accentColor}};") [{{pcName}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: #333333;")`,
     fields: [
@@ -210,6 +217,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "작성자 이름",
     keywords: ["라이터", "작가", "written"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "writer",
     code: `/desc [Written by](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{accentColor}};") [{{content}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: #333333;")`,
     fields: [
@@ -230,6 +238,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "강조할 내용",
     keywords: ["배경", "강조", "색상"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "background-highlight",
     code: `/desc [{{content}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{textColor}}; background-color: {{backgroundColor}}; text-align: center; display: block; padding: 4px; line-height: 1.3;")`,
     fields: [
@@ -256,6 +265,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "가릴 내용",
     keywords: ["블러", "스포일러", "비밀", "가리기"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "blur",
     code: `[{{content}}](#" style="${TEXT_DECORATION_NONE} color: rgba(0&#44;0&#44;0&#44;0&#41;; text-shadow: 5px 0 10px black&#44; -5px 0 10px black; font-size: {{fontSize}};")`,
     fields: [
@@ -276,6 +286,7 @@ export const macroTemplates: MacroTemplate[] = [
     previewText: "──── ✷ ────",
     keywords: ["가름선", "구분선", "장면", "전환"],
     platform: "roll20",
+    defaultTag: "code",
     previewKind: "divider",
     code: `/desc [{{divider}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{lineColor}};") [{{ornament}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{ornamentColor}};") [{{divider}}](#" style="font-family: Pretendard, sans-serif !important; ${TEXT_DECORATION_NONE} color: {{lineColor}};")`,
     fields: [

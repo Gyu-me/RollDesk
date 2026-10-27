@@ -36,6 +36,18 @@ test("creates and structures a scenario", async ({ page }) => {
     "color",
     "rgb(255, 0, 0)",
   );
+  await expect(macroDialog.getByLabel("적용 태그")).toHaveValue("narration");
+  await macroDialog.getByLabel("적용 태그").selectOption("investigation");
+  await macroDialog.getByRole("button", { name: "선택 줄에 적용" }).click();
+  await expect(firstLine).toHaveValue(/\/desc \[수정된 첫 줄\]/);
+  await expect(
+    page.getByRole("combobox", { name: "1번 ScriptLine 태그" }),
+  ).toHaveValue("investigation");
+
+  await page.getByRole("button", { name: "템플릿" }).click();
+  await expect(macroDialog.getByLabel("적용 태그")).toHaveValue(
+    "investigation",
+  );
   await macroDialog.getByRole("button", { name: "사용자 템플릿 추가" }).click();
   await macroDialog.getByLabel("이름").fill("내 강조 템플릿");
   await macroDialog.getByLabel("설명").fill("직접 저장한 코드");
@@ -44,9 +56,12 @@ test("creates and structures a scenario", async ({ page }) => {
   await expect(
     macroDialog.getByRole("heading", { name: "내 강조 템플릿" }),
   ).toBeVisible();
+  await expect(macroDialog.getByLabel("적용 태그")).toHaveValue("code");
   await macroDialog
     .getByRole("button", { name: "매크로 템플릿 보관함 닫기" })
     .click();
+  await page.getByRole("button", { name: "원문 보기" }).click();
+  await expect(firstLine).toHaveValue("수정된 첫 줄");
 
   await page
     .getByRole("combobox", { name: "1번 ScriptLine 태그" })
@@ -129,12 +144,30 @@ test("creates and structures a scenario", async ({ page }) => {
   await expect(
     page.getByRole("combobox", { name: "1번 ScriptLine 태그" }),
   ).toHaveValue("dialogue");
+  await page.getByRole("button", { name: "출력 코드 보기" }).click();
+  await expect(
+    page.getByRole("textbox", { name: /1번 ScriptLine 출력 코드/ }),
+  ).toHaveValue(/\/desc \[수정된 첫 줄\]/);
   await page.getByRole("button", { name: "템플릿" }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "매크로 템플릿 보관함" })
+      .getByLabel("적용 태그"),
+  ).toHaveValue("investigation");
   await expect(
     page
       .getByRole("dialog", { name: "매크로 템플릿 보관함" })
       .getByRole("button", { name: /내 강조 템플릿/ }),
   ).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "매크로 템플릿 보관함" })
+    .getByRole("button", { name: /내 강조 템플릿/ })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "매크로 템플릿 보관함" })
+      .getByLabel("적용 태그"),
+  ).toHaveValue("code");
   await page
     .getByRole("dialog", { name: "매크로 템플릿 보관함" })
     .getByRole("button", { name: "매크로 템플릿 보관함 닫기" })
